@@ -17,10 +17,7 @@ jobs:
   version:
     name: Bump version and tag
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      !contains(github.event.head_commit.message, '[skip ci]')
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip ci]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +40,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Bump version and create tag
-        run: npm version patch -m "chore(release): %s [skip ci]"
+        run: 'npm version patch -m "chore(release): %s [skip ci]"'
 
       - name: Push commit and tags
         run: git push --follow-tags origin HEAD:main
