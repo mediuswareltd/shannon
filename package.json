@@ -1,0 +1,36 @@
+{
+  "name": "shannon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shannon — monitor board for GitHub and more",
+  "homepage": "https://github.com/your-org/shannon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/shannon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/shannon/issues"
+  },
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^33.2.0",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
