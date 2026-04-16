@@ -1,6 +1,6 @@
 {
   "name": "shannon",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Shannon — monitor board for GitHub and more",
   "homepage": "https://github.com/your-org/shannon",
@@ -16,7 +16,9 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "dist": "npm version patch --no-git-tag-version -f && electron-vite build && electron-builder",
+    "dist:ci": "electron-vite build && electron-builder"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
@@ -29,8 +31,40 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "electron": "^33.2.0",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "com.shannon.peboard",
+    "productName": "Shannon",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    }
   }
 }
