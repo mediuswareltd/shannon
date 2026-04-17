@@ -7,7 +7,9 @@ const api: PeApi = {
   removeAccount: (id: string) => ipcRenderer.invoke('accounts:remove', id),
   listActivity: (opts?: { refresh?: boolean }) => ipcRenderer.invoke('activity:list', opts),
   listRepos: () => ipcRenderer.invoke('repos:list'),
-  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  getAppVersion: () => ipcRenderer.invoke('app:version'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check')
 }
 
 contextBridge.exposeInMainWorld('peApi', api)

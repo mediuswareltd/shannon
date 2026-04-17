@@ -1,8 +1,9 @@
 import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'node:path'
-import { ISSUES_URL, LICENSE_URL, REPO_BASE, README_URL } from './appLinks'
+import { ISSUES_URL, LICENSE_URL, README_URL, RELEASES_LATEST_URL, REPO_BASE } from './appLinks'
 import { APP_VERSION } from './appVersion'
 import { registerIpc } from './ipc'
+import { initUpdater } from './updater'
 
 registerIpc()
 
@@ -20,6 +21,10 @@ function installMenu(): void {
     {
       label: 'Repository',
       click: () => openUrl(REPO_BASE)
+    },
+    {
+      label: 'Download & releases',
+      click: () => openUrl(RELEASES_LATEST_URL)
     },
     {
       label: 'Issues & feedback',
@@ -118,7 +123,7 @@ function installMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -143,11 +148,14 @@ function createWindow(): void {
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return win
 }
 
 app.whenReady().then(() => {
   installMenu()
-  createWindow()
+  const win = createWindow()
+  initUpdater(win)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

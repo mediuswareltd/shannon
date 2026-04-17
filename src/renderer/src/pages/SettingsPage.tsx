@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { getReleasesLatestUrl } from '../../../shared/releases'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { useTheme } from '../theme/ThemeContext'
 
@@ -10,6 +11,8 @@ export function SettingsPage(): JSX.Element {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  const [appVersion, setAppVersion] = useState<string>('')
+  const [updateBusy, setUpdateBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -28,6 +31,10 @@ export function SettingsPage(): JSX.Element {
     void load()
   }, [load])
 
+  useEffect(() => {
+    void window.peApi.getAppVersion().then(setAppVersion)
+  }, [])
+
   async function onAdd(e: FormEvent): Promise<void> {
     e.preventDefault()
     if (!token.trim()) return
@@ -43,6 +50,24 @@ export function SettingsPage(): JSX.Element {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function onCheckUpdates(): Promise<void> {
+    setUpdateBusy(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const r = await window.peApi.checkForUpdates()
+      if (r.ok) {
+        setInfo(r.message)
+      } else {
+        setError(r.message)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setUpdateBusy(false)
     }
   }
 
@@ -77,6 +102,31 @@ export function SettingsPage(): JSX.Element {
           </button>
         </div>
       ) : null}
+
+      <section className="card card-raised">
+        <h2 className="card-title">Updates</h2>
+        <p className="card-subtitle muted">
+          Shannon checks GitHub for new releases in the background. Installers for Windows, macOS, and Linux are on the
+          releases page.
+        </p>
+        <div className="form" style={{ gap: '0.75rem' }}>
+          <p className="muted small">
+            Current version: <code>{appVersion || '…'}</code>
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <button type="button" className="btn primary" disabled={updateBusy} onClick={() => void onCheckUpdates()}>
+              {updateBusy ? 'Checking…' : 'Check for updates'}
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => void window.peApi.openExternal(getReleasesLatestUrl())}
+            >
+              Open downloads (GitHub)
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="card card-raised">
         <h2 className="card-title">Appearance</h2>
