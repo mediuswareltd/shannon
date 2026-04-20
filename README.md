@@ -1,4 +1,4 @@
-# Shannon
+# Shannon 
 
 <p align="center">
   <img src="assets/logo-1024x1024.png" alt="Shannon logo" width="200px" height="200px" />
