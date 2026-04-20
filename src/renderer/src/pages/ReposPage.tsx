@@ -21,11 +21,11 @@ export function ReposPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [range, setRange] = useState<DateRangeId>('24h')
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh?: boolean) => {
     setLoading(true)
     setError(null)
     try {
-      const data = await window.peApi.listRepos()
+      const data = await window.peApi.listRepos({ refresh })
       setRows(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -53,7 +53,7 @@ export function ReposPage(): JSX.Element {
         </div>
         <div className="header-actions">
           <DateRangeSelect value={range} onChange={setRange} />
-          <button type="button" className="btn" onClick={() => void load()} disabled={loading}>
+          <button type="button" className="btn" onClick={() => void load(true)} disabled={loading}>
             Refresh
           </button>
         </div>

@@ -34,7 +34,7 @@ export interface PeApi {
   addAccount: (token: string) => Promise<{ id: string; login: string }>
   removeAccount: (id: string) => Promise<void>
   listActivity: (opts?: { refresh?: boolean }) => Promise<ActivityRowDTO[]>
-  listRepos: () => Promise<RepoRowDTO[]>
+  listRepos: (opts?: { refresh?: boolean }) => Promise<RepoRowDTO[]>
   openExternal: (url: string) => Promise<void>
   getAppVersion: () => Promise<string>
   checkForUpdates: () => Promise<UpdateCheckResponse>

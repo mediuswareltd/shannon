@@ -32,26 +32,80 @@ export interface GitHubRepo {
   default_branch: string
 }
 
-async function ghJson<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` }
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`GitHub ${res.status}: ${text.slice(0, 500)}`)
+type RequestOptions = {
+  ttlMs?: number
+  force?: boolean
+}
+
+const requestCache = new Map<string, { expiresAt: number; value: unknown }>()
+const requestInFlight = new Map<string, Promise<unknown>>()
+const DEFAULT_EVENT_PAGES = 1
+const DEFAULT_ORG_EVENT_PAGES = 1
+const MAX_ORGS_PER_ACCOUNT = 10
+
+function requestKey(path: string, token: string): string {
+  return `${token}::${path}`
+}
+
+function readCached<T>(key: string): T | undefined {
+  const cached = requestCache.get(key)
+  if (!cached) return undefined
+  if (Date.now() >= cached.expiresAt) {
+    requestCache.delete(key)
+    return undefined
   }
-  return res.json() as Promise<T>
+  return cached.value as T
+}
+
+async function ghJson<T>(path: string, token: string, opts?: RequestOptions): Promise<T> {
+  const ttlMs = opts?.ttlMs ?? 0
+  const force = Boolean(opts?.force)
+  const key = requestKey(path, token)
+  if (!force && ttlMs > 0) {
+    const cached = readCached<T>(key)
+    if (cached !== undefined) return cached
+  }
+  if (!force) {
+    const inFlight = requestInFlight.get(key)
+    if (inFlight) return inFlight as Promise<T>
+  }
+
+  const run = (async () => {
+    const res = await fetch(`${API}${path}`, {
+      headers: { ...HEADERS, Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`GitHub ${res.status}: ${text.slice(0, 500)}`)
+    }
+    const data = (await res.json()) as T
+    if (ttlMs > 0) {
+      requestCache.set(key, { expiresAt: Date.now() + ttlMs, value: data })
+    }
+    return data
+  })()
+  requestInFlight.set(key, run)
+  try {
+    return await run
+  } finally {
+    requestInFlight.delete(key)
+  }
 }
 
 export async function verifyToken(token: string): Promise<GitHubUser> {
   return ghJson<GitHubUser>('/user', token)
 }
 
-export async function fetchUserEvents(login: string, token: string, pages = 2): Promise<GitHubEvent[]> {
+export async function fetchUserEvents(
+  login: string,
+  token: string,
+  pages = DEFAULT_EVENT_PAGES,
+  opts?: RequestOptions
+): Promise<GitHubEvent[]> {
   const out: GitHubEvent[] = []
   for (let page = 1; page <= pages; page++) {
     const path = `/users/${encodeURIComponent(login)}/events?per_page=30&page=${page}`
-    const batch = await ghJson<GitHubEvent[]>(path, token)
+    const batch = await ghJson<GitHubEvent[]>(path, token, { ttlMs: 60_000, force: opts?.force })
     out.push(...batch)
     if (batch.length < 30) break
   }
@@ -63,21 +117,51 @@ export interface GitHubOrg {
   id: number
 }
 
-async function ghJsonOptional<T>(path: string, token: string): Promise<T | null> {
-  const res = await fetch(`${API}${path}`, {
-    headers: { ...HEADERS, Authorization: `Bearer ${token}` }
-  })
-  if (!res.ok) {
-    return null
+async function ghJsonOptional<T>(path: string, token: string, opts?: RequestOptions): Promise<T | null> {
+  const ttlMs = opts?.ttlMs ?? 0
+  const force = Boolean(opts?.force)
+  const key = requestKey(path, token)
+  if (!force && ttlMs > 0) {
+    const cached = readCached<T | null>(key)
+    if (cached !== undefined) return cached
   }
-  return res.json() as Promise<T>
+  if (!force) {
+    const inFlight = requestInFlight.get(key)
+    if (inFlight) return inFlight as Promise<T | null>
+  }
+
+  const run = (async () => {
+    const res = await fetch(`${API}${path}`, {
+      headers: { ...HEADERS, Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) {
+      if (ttlMs > 0) {
+        requestCache.set(key, { expiresAt: Date.now() + ttlMs, value: null })
+      }
+      return null
+    }
+    const data = (await res.json()) as T
+    if (ttlMs > 0) {
+      requestCache.set(key, { expiresAt: Date.now() + ttlMs, value: data })
+    }
+    return data
+  })()
+  requestInFlight.set(key, run)
+  try {
+    return await run
+  } finally {
+    requestInFlight.delete(key)
+  }
 }
 
 /** Orgs the authenticated user belongs to (classic PAT: `read:org`). */
-export async function fetchUserOrgs(token: string, maxPages = 5): Promise<GitHubOrg[]> {
+export async function fetchUserOrgs(token: string, maxPages = 5, opts?: RequestOptions): Promise<GitHubOrg[]> {
   const out: GitHubOrg[] = []
   for (let page = 1; page <= maxPages; page++) {
-    const batch = await ghJsonOptional<GitHubOrg[]>(`/user/orgs?per_page=100&page=${page}`, token)
+    const batch = await ghJsonOptional<GitHubOrg[]>(`/user/orgs?per_page=100&page=${page}`, token, {
+      ttlMs: 10 * 60 * 1000,
+      force: opts?.force
+    })
     if (!batch || batch.length === 0) break
     out.push(...batch)
     if (batch.length < 100) break
@@ -93,12 +177,13 @@ export async function fetchUserOrgEvents(
   userLogin: string,
   orgLogin: string,
   token: string,
-  pages = 2
+  pages = DEFAULT_ORG_EVENT_PAGES,
+  opts?: RequestOptions
 ): Promise<GitHubEvent[]> {
   const out: GitHubEvent[] = []
   for (let page = 1; page <= pages; page++) {
     const path = `/users/${encodeURIComponent(userLogin)}/events/orgs/${encodeURIComponent(orgLogin)}?per_page=30&page=${page}`
-    const batch = await ghJsonOptional<GitHubEvent[]>(path, token)
+    const batch = await ghJsonOptional<GitHubEvent[]>(path, token, { ttlMs: 60_000, force: opts?.force })
     if (!batch || batch.length === 0) break
     out.push(...batch)
     if (batch.length < 30) break
@@ -106,11 +191,11 @@ export async function fetchUserOrgEvents(
   return out
 }
 
-export async function fetchUserRepos(token: string, pages = 1): Promise<GitHubRepo[]> {
+export async function fetchUserRepos(token: string, pages = 1, opts?: RequestOptions): Promise<GitHubRepo[]> {
   const out: GitHubRepo[] = []
   for (let page = 1; page <= pages; page++) {
     const path = `/user/repos?per_page=100&page=${page}&sort=updated`
-    const batch = await ghJson<GitHubRepo[]>(path, token)
+    const batch = await ghJson<GitHubRepo[]>(path, token, { ttlMs: 5 * 60 * 1000, force: opts?.force })
     out.push(...batch)
     if (batch.length < 100) break
   }
@@ -294,12 +379,16 @@ async function resolveHeadShaFromRef(
   owner: string,
   repoName: string,
   ref: string,
-  token: string
+  token: string,
+  opts?: RequestOptions
 ): Promise<string | null> {
   const branch = ref.replace(/^refs\/heads\//, '').replace(/^refs\/tags\//, '')
   if (!branch) return null
   const path = `/repos/${owner}/${repoName}/commits?sha=${encodeURIComponent(branch)}&per_page=1`
-  const list = await ghJsonOptional<Array<{ sha?: string }>>(path, token)
+  const list = await ghJsonOptional<Array<{ sha?: string }>>(path, token, {
+    ttlMs: 10 * 60 * 1000,
+    force: opts?.force
+  })
   const sha = list?.[0]?.sha
   return typeof sha === 'string' && sha.length > 0 ? sha : null
 }
@@ -308,10 +397,14 @@ async function fetchCommitMessageBySha(
   owner: string,
   repoName: string,
   sha: string,
-  token: string
+  token: string,
+  opts?: RequestOptions
 ): Promise<string[]> {
   const path = `/repos/${owner}/${repoName}/commits/${encodeURIComponent(sha)}`
-  const data = await ghJsonOptional<{ commit?: { message?: string } }>(path, token)
+  const data = await ghJsonOptional<{ commit?: { message?: string } }>(path, token, {
+    ttlMs: 10 * 60 * 1000,
+    force: opts?.force
+  })
   const m = data?.commit?.message
   if (typeof m !== 'string' || !m.trim()) return []
   const line = firstLineFromGitMessage(m)
@@ -322,7 +415,12 @@ async function fetchCommitMessageBySha(
  * When the events feed omits `payload.commits`, load messages via Compare or Commits API (needs `repo` scope).
  * Never throws — network/parsing errors would otherwise break the whole activity feed.
  */
-export async function enrichPushCommitMessages(ev: GitHubEvent, token: string, maxMessages = 20): Promise<string[]> {
+export async function enrichPushCommitMessages(
+  ev: GitHubEvent,
+  token: string,
+  maxMessages = 20,
+  force = false
+): Promise<string[]> {
   try {
     const inlined = pushCommitMessages(ev)
     if (inlined.length > 0) return inlined
@@ -338,7 +436,7 @@ export async function enrichPushCommitMessages(ev: GitHubEvent, token: string, m
     const ref = typeof p.ref === 'string' ? p.ref : ''
 
     if (!head && ref) {
-      head = (await resolveHeadShaFromRef(owner, repoName, ref, token)) ?? ''
+      head = (await resolveHeadShaFromRef(owner, repoName, ref, token, { force })) ?? ''
     }
     if (!head) return []
 
@@ -354,20 +452,23 @@ export async function enrichPushCommitMessages(ev: GitHubEvent, token: string, m
       const comparePath = `/repos/${owner}/${repoName}/compare/${before}...${head}`
       const compared = await ghJsonOptional<{
         commits?: Array<{ commit?: { message?: string } }>
-      }>(comparePath, token)
+      }>(comparePath, token, { ttlMs: 5 * 60 * 1000, force })
       const msgs = commitMessagesFromApiObjects(compared?.commits ?? [], maxMessages)
       if (msgs.length > 0) return msgs
     }
 
     const listPath = `/repos/${owner}/${repoName}/commits?sha=${encodeURIComponent(head)}&per_page=${sizeHint}`
-    const listed = await ghJsonOptional<Array<{ commit?: { message?: string } }>>(listPath, token)
+    const listed = await ghJsonOptional<Array<{ commit?: { message?: string } }>>(listPath, token, {
+      ttlMs: 5 * 60 * 1000,
+      force
+    })
     if (listed?.length) {
       const chronological = [...listed].reverse()
       const fromList = commitMessagesFromApiObjects(chronological, maxMessages)
       if (fromList.length > 0) return fromList
     }
 
-    const single = await fetchCommitMessageBySha(owner, repoName, head, token)
+    const single = await fetchCommitMessageBySha(owner, repoName, head, token, { force })
     if (single.length > 0) return single
 
     return []
@@ -408,8 +509,12 @@ export type CollectedEventRow = {
   orgContext: string | null
 }
 
-export async function collectEvents(accounts: StoredAccount[]): Promise<CollectedEventRow[]> {
+export async function collectEvents(
+  accounts: StoredAccount[],
+  opts?: { forceRefresh?: boolean }
+): Promise<CollectedEventRow[]> {
   const byEventId = new Map<string, CollectedEventRow>()
+  const force = Boolean(opts?.forceRefresh)
 
   const add = (row: CollectedEventRow): void => {
     const dedupeKey = String(row.event.id)
@@ -425,7 +530,7 @@ export async function collectEvents(accounts: StoredAccount[]): Promise<Collecte
 
   for (const acc of accounts) {
     const token = getToken(acc)
-    const personal = await fetchUserEvents(acc.login, token)
+    const personal = await fetchUserEvents(acc.login, token, DEFAULT_EVENT_PAGES, { force })
     for (const ev of personal) {
       add({
         key: `${acc.login}-u-${ev.id}`,
@@ -439,14 +544,14 @@ export async function collectEvents(accounts: StoredAccount[]): Promise<Collecte
 
     let orgs: GitHubOrg[] = []
     try {
-      orgs = await fetchUserOrgs(token)
+      orgs = await fetchUserOrgs(token, 5, { force })
     } catch {
       orgs = []
     }
-    for (const org of orgs.slice(0, 50)) {
+    for (const org of orgs.slice(0, MAX_ORGS_PER_ACCOUNT)) {
       let orgEvents: GitHubEvent[] = []
       try {
-        orgEvents = await fetchUserOrgEvents(acc.login, org.login, token)
+        orgEvents = await fetchUserOrgEvents(acc.login, org.login, token, DEFAULT_ORG_EVENT_PAGES, { force })
       } catch {
         orgEvents = []
       }
@@ -468,13 +573,17 @@ export async function collectEvents(accounts: StoredAccount[]): Promise<Collecte
   return rows
 }
 
-export async function collectRepos(accounts: StoredAccount[]): Promise<
+export async function collectRepos(
+  accounts: StoredAccount[],
+  opts?: { forceRefresh?: boolean }
+): Promise<
   Array<{ accountLogin: string; repo: GitHubRepo }>
 > {
   const rows: Array<{ accountLogin: string; repo: GitHubRepo }> = []
+  const force = Boolean(opts?.forceRefresh)
   for (const acc of accounts) {
     const token = getToken(acc)
-    const repos = await fetchUserRepos(token)
+    const repos = await fetchUserRepos(token, 1, { force })
     for (const repo of repos) {
       rows.push({ accountLogin: acc.login, repo })
     }
