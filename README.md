@@ -4,7 +4,7 @@
   <img src="assets/logo-1024x1024.png" alt="Shannon logo" width="200px" height="200px" />
 </p>
 
-Desktop **monitor board** for developer activity. Today it connects to **GitHub**; the UI is built to add more sources (e.g. ClickUp) later.
+Desktop **monitor board** for developer activity. Today it connects to **GitHub**, The UI is built to add more sources (e.g. ClickUp) later.
 
 Built with **Electron**, **React**, **TypeScript**, and **electron-vite**.
 
