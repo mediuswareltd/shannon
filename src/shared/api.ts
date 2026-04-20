@@ -25,11 +25,17 @@ export interface RepoRowDTO {
   default_branch: string
 }
 
+export type UpdateCheckResponse =
+  | { ok: true; message: string; mode?: 'dev' }
+  | { ok: false; message: string }
+
 export interface PeApi {
   listAccounts: () => Promise<{ id: string; login: string }[]>
   addAccount: (token: string) => Promise<{ id: string; login: string }>
   removeAccount: (id: string) => Promise<void>
   listActivity: (opts?: { refresh?: boolean }) => Promise<ActivityRowDTO[]>
-  listRepos: () => Promise<RepoRowDTO[]>
+  listRepos: (opts?: { refresh?: boolean }) => Promise<RepoRowDTO[]>
   openExternal: (url: string) => Promise<void>
+  getAppVersion: () => Promise<string>
+  checkForUpdates: () => Promise<UpdateCheckResponse>
 }

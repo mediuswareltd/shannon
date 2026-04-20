@@ -26,6 +26,9 @@ const base = repoBase()
 
 export const REPO_BASE = base
 
+/** Latest GitHub Releases page for installers and release notes. */
+export const RELEASES_LATEST_URL = `${base.replace(/\/$/, '')}/releases/latest`
+
 export const ISSUES_URL =
   p.bugs?.url && /^https?:\/\//i.test(p.bugs.url) ? p.bugs.url.replace(/\/$/, '') : `${base}/issues`
 

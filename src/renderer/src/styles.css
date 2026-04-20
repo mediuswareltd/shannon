@@ -91,13 +91,12 @@ body {
   padding: 8px 8px 16px;
 }
 
-/* Flat mark — no gradient */
 .brand-mark {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
-  background: var(--surface-2);
+  object-fit: cover;
   border: 1px solid var(--border);
 }
 
