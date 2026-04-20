@@ -1,10 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import electronUpdater from 'electron-updater'
 import { APP_VERSION } from './appVersion'
 
 let initialized = false
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+const { autoUpdater } = electronUpdater
 
 export function initUpdater(mainWindow: BrowserWindow): void {
   if (initialized) return
