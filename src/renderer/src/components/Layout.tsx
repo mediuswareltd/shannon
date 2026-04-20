@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
+import brandLogo from '../../../../assets/logo-1024x1024.png'
 
 const nav: Array<{ to: string; label: string; icon: JSX.Element }> = [
   {
@@ -59,7 +60,7 @@ export function Layout(): JSX.Element {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark" aria-hidden />
+          <img className="brand-mark" src={brandLogo} alt="Shannon logo" />
           <div className="brand-text">
             <div className="brand-title">Shannon</div>
             <div className="brand-sub">Monitor board</div>

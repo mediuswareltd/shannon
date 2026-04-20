@@ -130,6 +130,7 @@ function createWindow(): BrowserWindow {
     minWidth: 900,
     minHeight: 600,
     title: 'Shannon',
+    icon: join(__dirname, '../../assets/logo-1024x1024.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

@@ -46,6 +46,7 @@
     },
     "files": [
       "out/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "mac": {
@@ -56,6 +57,7 @@
       ]
     },
     "win": {
+      "icon": "assets/logo-1024x1024.png",
       "target": [
         "nsis"
       ]
