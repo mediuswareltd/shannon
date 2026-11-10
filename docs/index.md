@@ -5,6 +5,9 @@ hero:
   name: "Shannon"
   text: "Developer activity monitor board"
   tagline: "An Electron desktop monitor board for developer activity, starting with GitHub and built to add more sources later."
+  image:
+    src: /hero.png
+    alt: "Shannon developer activity monitor"
   actions:
   - theme: brand
     text: Get started
