@@ -1,5 +1,7 @@
 # Shannon 
 
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0f766e)](https://mediuswareltd.github.io/shannon/)
+
 <p align="center">
   <img src="assets/logo-1024x1024.png" alt="Shannon logo" width="200px" height="200px" />
 </p>
@@ -56,3 +58,15 @@ Update `homepage`, `repository.url`, and `bugs.url` in `package.json` so in-app 
 ## License
 
 Add a `LICENSE` file in the repository root when you publish this project.
+
+## Documentation
+
+Full docs site (VitePress): **https://mediuswareltd.github.io/shannon/**
+
+Local preview:
+
+```bash
+cd docs
+npm install
+npm run docs:dev
+```
