@@ -1,26 +1,33 @@
 # Getting started
 
-Install and run **Shannon** locally.
+Run **Shannon** on your machine.
 
-## Prerequisites
-
-- Working knowledge of TypeScript
-- Git and a terminal
-
-## Install
+## 1. Setup
 
 ```bash
 npm install
 ```
 
-## Quick start
+## 2. Build
 
 ```bash
-npm run dev
 npm run build
 ```
 
-## Next steps
+Output is under `out/`. Use `npm run preview` to try the packaged layout as supported by electron-vite.
 
-- Read the [Guide](/guide) for features and usage.
-- Star or contribute on [GitHub](https://github.com/mediuswareltd/shannon).
+## 3. Run
+
+```bash
+npm run dev
+```
+
+## 4. Requirements
+
+- **Node.js** 18+ (recommended: current LTS)
+- npm (or a compatible client)
+
+## Next
+
+- Full detail: [Guide](/guide)
+- Source: [github.com/mediuswareltd/shannon](https://github.com/mediuswareltd/shannon)
